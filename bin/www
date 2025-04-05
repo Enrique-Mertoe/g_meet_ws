@@ -6,7 +6,7 @@
 const app = require('../app');
 const debug = require('debug')('g-meet-ws:server');
 const http = require('http');
-const {Server} = require("ws");
+const {Server} = require("socket.io");
 
 /**
  * Get port from environment and store in Express.
@@ -32,19 +32,19 @@ server.on('listening', onListening);
  */
 
 function normalizePort(val) {
-  const port = parseInt(val, 10);
+    const port = parseInt(val, 10);
 
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
 
-  if (port >= 0) {
-    // port number
-    return port;
-  }
+    if (port >= 0) {
+        // port number
+        return port;
+    }
 
-  return false;
+    return false;
 }
 
 /**
@@ -52,27 +52,27 @@ function normalizePort(val) {
  */
 
 function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
 
-  const bind = typeof port === 'string'
-      ? 'Pipe ' + port
-      : 'Port ' + port;
+    const bind = typeof port === 'string'
+        ? 'Pipe ' + port
+        : 'Port ' + port;
 
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
 }
 
 /**
@@ -80,34 +80,80 @@ function onError(error) {
  */
 
 function onListening() {
-  const addr = server.address();
-  const bind = typeof addr === 'string'
-      ? 'pipe ' + addr
-      : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+    const addr = server.address();
+    const bind = typeof addr === 'string'
+        ? 'pipe ' + addr
+        : 'port ' + addr.port;
+    debug('Listening on ' + bind);
 }
 
 
-const wss = new Server({ server });
+const wss = new Server(server, {
+    cors: {
+        origin: ['http://localhost:3000'],
+        methods: ['GET', 'POST'],
+        credentials: true,
+    }
+});
 // Handling WebSocket connections
 wss.on('connection', (ws) => {
-  console.log('New client connected');
+    ws.emit('connection', {message: 'accepted'});
+    console.log("connected new client")
 
-  // Handle incoming message from client (e.g., user action like scrolling or highlight)
-  ws.on('message', (message) => {
-    console.log('Received message:', message.toString());
-
-    // You can process the event data here (e.g., scroll, highlight, etc.)
-    // and broadcast it to all connected clients
-    wss.clients.forEach((client) => {
-      if (client !== ws && client.readyState === client.OPEN) {
-        client.send(message);
-      }
+    // Handle incoming message from client (e.g., user action like scrolling or highlight)
+    ws.on('new-message', (message) => {
+        console.log('Received message:', message.toString());
+        wss.emit('new-message', {from: ws.id, data: message});
+        //
+        // // You can process the event data here (e.g., scroll, highlight, etc.)
+        // // and broadcast it to all connected clients
+        // wss.clients.forEach((client) => {
+        //     if (client !== ws && client.readyState === client.OPEN) {
+        //         client.send(message);
+        //     }
+        // });
     });
-  });
 
-  // Handling WebSocket close event
-  ws.on('close', () => {
-    console.log('Client disconnected');
-  });
+    // Handling WebSocket close event
+    ws.on('close', () => {
+        console.log('Client disconnected');
+    });
 });
+
+
+// io.on('connection', (socket) => {
+//   socket.on('join-room', (roomId, userId) => {
+//     socket.join(roomId);
+//     console.log(`${userId} joined room ${roomId}`);
+//
+//     // Notify others in the room
+//     socket.to(roomId).emit('user-connected', userId);
+//
+//     socket.on('disconnect', () => {
+//       socket.to(roomId).emit('user-disconnected', userId);
+//     });
+//   });
+// });
+// ts
+// Copy
+// Edit
+// // Client-side
+// socket.emit('join-room', 'abc123', userId);
+
+// io.on('connection', (socket) => {
+//   socket.on('join-room', (roomId, userId) => {
+//     socket.join(roomId);
+//     console.log(`${userId} joined ${roomId}`);
+//
+//     // Notify only others in the same room
+//     socket.to(roomId).emit('user-joined', userId);
+//   });
+//
+//   socket.on('send-message', (roomId, message) => {
+//     // Broadcast message only to the room
+//     io.to(roomId).emit('new-message', {
+//       sender: socket.id,
+//       message,
+//     });
+//   });
+// });
