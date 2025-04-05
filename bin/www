@@ -90,7 +90,7 @@ function onListening() {
 
 const wss = new Server(server, {
     cors: {
-        origin: ['http://localhost:3000'],
+        origin: ['http://localhost:3000', 'https://meet.kaigates.com/'],
         methods: ['GET', 'POST'],
         credentials: true,
     }
