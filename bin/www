@@ -93,7 +93,7 @@ const wss = new Server(server, {
         origin: ['http://localhost:3000', 'https://meet.kaigates.com/'],
         methods: ['GET', 'POST'],
         credentials: true,
-    }
+    }, maxHttpBufferSize: 1e8
 });
 // Handling WebSocket connections
 wss.on('connection', (ws) => {
@@ -104,17 +104,16 @@ wss.on('connection', (ws) => {
     ws.on('new-message', (message) => {
         console.log('Received message:', message.toString());
         wss.emit('new-message', {from: ws.id, data: message});
-        //
-        // // You can process the event data here (e.g., scroll, highlight, etc.)
-        // // and broadcast it to all connected clients
-        // wss.clients.forEach((client) => {
-        //     if (client !== ws && client.readyState === client.OPEN) {
-        //         client.send(message);
-        //     }
-        // });
     });
 
-    // Handling WebSocket close event
+    ws.on('typing', ({chatId, userId}) => {
+        ws.to(chatId).emit('showTyping', {userId});
+    });
+
+    ws.on('stopTyping', ({chatId, userId}) => {
+        ws.to(chatId).emit('hideTyping', {userId});
+    });
+
     ws.on('close', () => {
         console.log('Client disconnected');
     });
