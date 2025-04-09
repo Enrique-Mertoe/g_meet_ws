@@ -1,3 +1,5 @@
+const EventRegistry = require("./events/EventRegistry");
+
 function makeres({status = 200, data}) {
     return {
         status: status,
@@ -12,19 +14,20 @@ function datRes({ok = false, data = {}, message = ""} = {}) {
 }
 
 const APiContext = ({data}) => {
-    const canProcess = function () {
+    const validateParams = function () {
         return data.event && data.action
     }
 
-    const handler = () => {
-        if (!canProcess())
-            return datRes()
-        return datRes({ok: true})
+    const handler = async () => {
+        if (!validateParams())
+            return datRes({message: "Invalid request! Ensure both event and action are provided."})
+        const [ok,info] = await EventRegistry(data.event,data.action, data.data)
+        return datRes({ok: ok,...info})
     }
 
     async function process() {
-        return new Promise((resolve, reject) => {
-            resolve(makeres({data: handler()}))
+        return new Promise(async (resolve, reject) => {
+            resolve(makeres({data: await handler()}))
         })
     }
 

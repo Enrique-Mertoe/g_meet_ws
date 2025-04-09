@@ -7,7 +7,7 @@ const cors = require('cors');
 const indexRouter = require('./app_server/routes/index');
 const usersRouter = require('./app_server/routes/users');
 const apiRouter = require('./app_server/routes/Api');
-
+require("./app_server/database/db")
 const app = express();
 
 const allowedOrigins = ['http://localhost:3000',
