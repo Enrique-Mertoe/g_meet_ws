@@ -13,16 +13,22 @@ function datRes({ok = false, data = {}, message = ""} = {}) {
     }
 }
 
+const validateParams = function (data) {
+    return data.event && data.action
+}
 const APiContext = ({data}) => {
-    const validateParams = function () {
-        return data.event && data.action
-    }
+
 
     const handler = async () => {
-        if (!validateParams())
+        if (!validateParams(data))
             return datRes({message: "Invalid request! Ensure both event and action are provided."})
-        const [ok,info] = await EventRegistry(data.event,data.action, data.data)
-        return datRes({ok: ok,...info})
+        try {
+            const [ok, info] = await EventRegistry(data.event, data.action, data.data)
+            return datRes({ok: ok, ...info})
+        } catch (err) {
+            console.log("Error: ", err.message)
+            return datRes({message: "Action not completed"})
+        }
     }
 
     async function process() {
@@ -41,4 +47,4 @@ const ApiBuilder = (req, res) => {
     }
     return {build}
 }
-module.exports = ApiBuilder
+module.exports = {ApiBuilder}

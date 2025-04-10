@@ -2,6 +2,8 @@ const {now} = require("mongoose");
 const User = require("../../database/models/User");
 const bcrypt = require('bcryptjs');
 const {generateAuthToken, generateRefreshToken} = require("../jwt");
+const Session = require("../../database/models/Session");
+const {v4: uuidv4} = require('uuid');
 
 
 const AuthRes = ({
@@ -9,10 +11,17 @@ const AuthRes = ({
                      message, data
                  }) => {
     return {
-        ok: false,
+        ok,
         data: data,
         message: message
     }
+}
+
+const validateInput = (...args) => {
+    for (let arg in args)
+        if (!args[arg])
+            return false
+    return true;
 }
 
 const signIn = async data => {
@@ -37,29 +46,29 @@ const signIn = async data => {
             auth_token: generateAuthToken(user._id),
             refresh_token: generateRefreshToken(user._id),
             user: {
-                id: user._id,
-                name: user.fullName, // from virtual field
-                profile_url: user.profileUrl || null // if applicable
+                email: user.email,
+                name: user.fullName,
+                profile_url: user.profileUrl || null
             }
         }
     });
 }
 
-const SignUp = async ({ data }) => {
-    const { firstName, lastName, email, password } = data;
+const SignUp = async ({data}) => {
+    const {firstName, lastName, email, password} = data;
 
     if (!firstName || !lastName || !email || !password) {
-        return AuthRes({ message: "All fields are required" });
+        return AuthRes({message: "All fields are required"});
     }
 
     // Check if user already exists
     const exists = await User.emailExists(email.toLowerCase());
     if (exists) {
-        return AuthRes({ message: "Email already registered" });
+        return AuthRes({message: "Email already registered"});
     }
 
     try {
-        const newUser = new User({ firstName, lastName, email, password });
+        const newUser = new User({firstName, lastName, email, password});
         await newUser.save();
 
         return AuthRes({
@@ -77,15 +86,96 @@ const SignUp = async ({ data }) => {
         });
     } catch (err) {
         console.error("Signup error:", err);
-        return AuthRes({ message: "Something went wrong during registration" });
+        return AuthRes({message: "Something went wrong during registration"});
+    }
+};
+
+const SessionManagement = async data => {
+    const {ses_id, user_id, ip_address, user_agent, payload} = data;
+    if (!validateInput(ses_id, ip_address, user_agent, payload)) {
+        return AuthRes({message: "All fields are required"});
+    }
+    try {
+        const exists = await Session.findBySessionId(ses_id);
+        if (exists) {
+            return AuthRes({ok: true, data: exists});
+        }
+        const newSession = new Session({
+            id: uuidv4(),
+            ses_id,
+            user_id,
+            ip_address,
+            user_agent,
+            payload,
+            last_activity: Date.now(),
+        });
+        await newSession.save();
+
+        return AuthRes({
+            ok: true,
+            message: "Session saved",
+            data: newSession
+        });
+    } catch (err) {
+        console.error("Session error:", err);
+        return AuthRes({message: "Something went wrong during session creation"});
+    }
+};
+const SessionGet = async data => {
+    const {ses_id} = data;
+    if (!validateInput(ses_id)) {
+        return AuthRes({message: "All fields are required"});
+    }
+    try {
+        const sess = await Session.findBySessionId(ses_id);
+
+        return AuthRes({ok: true, data: sess});
+
+    } catch (err) {
+        console.error("Session error:", err);
+        return AuthRes({message: "Something went wrong during session creation"});
+    }
+};
+
+
+const SessionUpdate = async data => {
+    const {ses_id, payload} = data;
+    if (!validateInput(ses_id, payload)) {
+        return AuthRes({message: "All fields are required"});
+    }
+    try {
+        const exists = await Session.findBySessionId(ses_id);
+        if (!exists) {
+            return AuthRes({ok: false, message: "no session found"});
+        }
+        exists.payload = payload;
+        exists.last_activity = Date.now();
+        await exists.save();
+
+        return AuthRes({
+            ok: true,
+            message: "Session updated",
+            data: exists
+        });
+    } catch (err) {
+        console.error("Session error:", err);
+        return AuthRes({message: "Something went wrong during session creation"});
     }
 };
 
 const ApiAuth = async ({action, data}) => {
-    if (!["signin", "password-reset"].includes(action))
+    if (!["signin", "password-reset",
+        "session-update",
+        "session-init", "session-get"].includes(action))
         return AuthRes({message: "Invalid Auth request"});
     if (action === "signin")
         return await signIn(data)
+    if (action === "session-init")
+        return await SessionManagement(data)
+    if (action === "session-get")
+        return await SessionGet(data)
+    if (action === "session-update")
+        return await SessionUpdate(data)
 
 }
 module.exports = ApiAuth

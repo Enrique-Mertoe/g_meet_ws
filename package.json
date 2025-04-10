@@ -13,7 +13,9 @@
     "debug": "~2.6.9",
     "dotenv": "^16.4.7",
     "express": "5.0.0",
+    "express-jwt": "^8.5.1",
     "http-errors": "~1.6.3",
+    "jsonwebtoken": "^9.0.2",
     "mongodb": "6.15",
     "mongoose": "^8.13.2",
     "morgan": "~1.9.1",
@@ -21,6 +23,7 @@
     "pug": "3.0.3",
     "seedgoose": "^2.0.2",
     "socket.io": "^4.8.1",
+    "uuid": "^11.1.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {
