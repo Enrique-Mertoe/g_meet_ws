@@ -46,6 +46,7 @@ const signIn = async data => {
             auth_token: generateAuthToken(user._id),
             refresh_token: generateRefreshToken(user._id),
             user: {
+                _id: user._id.toString(),
                 email: user.email,
                 name: user.fullName,
                 profile_url: user.profileUrl || null
@@ -78,9 +79,10 @@ const SignUp = async ({data}) => {
                 auth_token: generateAuthToken(newUser._id),
                 refresh_token: generateRefreshToken(newUser._id),
                 user: {
-                    id: newUser._id,
+                    _id: newUser._id.toString(),
+                    email: newUser.email,
                     name: newUser.fullName,
-                    profile_url: newUser.profileUrl || null // if you later add it
+                    profile_url: newUser.profileUrl || null
                 }
             }
         });

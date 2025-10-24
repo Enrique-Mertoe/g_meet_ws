@@ -114,7 +114,103 @@ wss.on('connection', (ws) => {
         ws.to(chatId).emit('hideTyping', {userId});
     });
 
+    // Meeting WebSocket Events
+
+    // Join a meeting room
+    ws.on('join-meeting', ({meetingId, userId, userName}) => {
+        ws.join(meetingId);
+        ws.data = { ...ws.data, meetingId, userId, userName };
+        console.log(`${userName} (${userId}) joined meeting ${meetingId}`);
+
+        // Notify others in the meeting
+        ws.to(meetingId).emit('user-joined-meeting', {
+            userId,
+            userName,
+            socketId: ws.id
+        });
+
+        // Send current participants to the new joiner
+        const room = wss.sockets.adapter.rooms.get(meetingId);
+        const participantCount = room ? room.size : 0;
+        ws.emit('meeting-info', { meetingId, participantCount });
+    });
+
+    // Leave meeting room
+    ws.on('leave-meeting', ({meetingId, userId, userName}) => {
+        ws.leave(meetingId);
+        console.log(`${userName} (${userId}) left meeting ${meetingId}`);
+
+        // Notify others in the meeting
+        ws.to(meetingId).emit('user-left-meeting', {
+            userId,
+            userName,
+            socketId: ws.id
+        });
+    });
+
+    // Meeting status updates (started, ended)
+    ws.on('meeting-status-update', ({meetingId, status, data}) => {
+        console.log(`Meeting ${meetingId} status updated to ${status}`);
+        wss.to(meetingId).emit('meeting-status-changed', {
+            meetingId,
+            status,
+            data
+        });
+    });
+
+    // Participant status updates (mute, video off, etc.)
+    ws.on('participant-status-update', ({meetingId, userId, status}) => {
+        ws.to(meetingId).emit('participant-status-changed', {
+            userId,
+            status
+        });
+    });
+
+    // New meeting created (broadcast to dashboard users)
+    ws.on('meeting-created', (meetingData) => {
+        wss.emit('new-meeting-created', meetingData);
+    });
+
+    // Meeting updated
+    ws.on('meeting-updated', ({meetingId, data}) => {
+        wss.to(meetingId).emit('meeting-data-updated', {
+            meetingId,
+            data
+        });
+    });
+
+    // Screen sharing events (cursor, scroll, etc.) - broadcast to meeting room
+    ws.on('screen-event', (data) => {
+        const meetingId = ws.data?.meetingId;
+        if (meetingId) {
+            // Broadcast screen event to all participants in the meeting except sender
+            ws.to(meetingId).emit('screen-event', {
+                from: ws.id,
+                userId: ws.data.userId,
+                userName: ws.data.userName,
+                data
+            });
+        }
+    });
+
     ws.on('close', () => {
+        console.log('Client disconnected');
+    });
+
+    ws.on('disconnect', () => {
+        const meetingId = ws.data?.meetingId;
+        const userId = ws.data?.userId;
+        const userName = ws.data?.userName;
+
+        if (meetingId && userId) {
+            // Notify others that user left
+            ws.to(meetingId).emit('user-left-meeting', {
+                userId,
+                userName,
+                socketId: ws.id
+            });
+        }
+
         console.log('Client disconnected');
     });
 });

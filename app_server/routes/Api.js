@@ -15,5 +15,10 @@ router.post('/auth',function (req, res, next) {
         res.status(b.status).json(b.data)
     })
 });
+router.post('/meeting',function (req, res, next) {
+    ApiBuilder(req, res).build(b => {
+        res.status(b.status).json(b.data)
+    })
+});
 
 module.exports = router;
