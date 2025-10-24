@@ -44,3 +44,4 @@ process.on('SIGUSR2', gracefulShutdown.bind(null, 'nodemon restart'));
 
 connect();
 // (new User({email: "mikemilla778@gmail.com", password: "12345", firstName: "Martin", lastName: "Abuti"})).save()
+// (new User({email: "user1@gmail.com", password: "12345", firstName: "User1", lastName: "User1_"})).save()
